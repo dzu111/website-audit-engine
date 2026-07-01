@@ -1,0 +1,14 @@
+{
+  "name": "website-audit-engine",
+  "version": "1.0.0",
+  "description": "AI Agent Orchestration Engine for Corporate Website Audits",
+  "main": "index.html",
+  "scripts": {
+    "build": "echo 'Ready to deploy'"
+  },
+  "dependencies": {
+    "openai": "^4.52.7"
+  },
+  "author": "Solo Web Developer",
+  "license": "MIT"
+}
