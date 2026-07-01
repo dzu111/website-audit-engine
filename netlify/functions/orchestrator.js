@@ -1,12 +1,10 @@
 const { GoogleGenAI } = require('@google/genai');
 
-// Initialize the Gemini client using the environment variable
 const ai = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY
 });
 
 exports.handler = async function(event, context) {
-    // Enable CORS handling for incoming requests
     if (event.httpMethod === 'OPTIONS') {
         return {
             statusCode: 200,
@@ -29,32 +27,39 @@ exports.handler = async function(event, context) {
             return { statusCode: 400, body: JSON.stringify({ error: 'Target URL is required' }) };
         }
 
-        // Agent 1: The UI/UX Expert
+        // Agent 1: The UI/UX Expert (Constrained for speed)
         const uiUxAgentTask = ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: `System Role: You are an elite UI/UX Design Auditor. Analyze the provided URL. Call out interface friction, mobile responsiveness issues, layout inconsistencies, and accessibility barriers. Keep the analysis direct, actionable, and formatted with clear bullet points.\n\nPerform a design friction audit on this corporate web application property: ${url}`
+            contents: `You are an elite UI/UX Design Auditor. Analyze the provided URL and list interface friction or mobile responsiveness issues. Keep it to exactly 3 short bullet points. URL: ${url}`,
+            config: {
+                maxOutputTokens: 150,
+                temperature: 0.4
+            }
         });
 
-        // Agent 2: The Technical Expert
+        // Agent 2: The Technical Expert (Constrained for speed)
         const technicalAgentTask = ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: `System Role: You are a Senior Full-Stack Architect. Analyze the provided URL. Diagnose potential production bottlenecks, database connectivity risks, core web vitals, security gaps, and foundational SEO structure errors. Keep your advice technically accurate and developer-focused.\n\nPerform a technical structural audit on this corporate web application property: ${url}`
+            contents: `You are a Senior Full-Stack Architect. Analyze the provided URL for potential performance bottlenecks or SEO errors. Keep it to exactly 3 short bullet points. URL: ${url}`,
+            config: {
+                maxOutputTokens: 150,
+                temperature: 0.4
+            }
         });
 
-        // Orchestrator Synchronization Layer (Awaiting both tasks to resolve concurrently)
+        // Orchestrator Synchronization Layer
         const [uiUxResult, technicalResult] = await Promise.all([uiUxAgentTask, technicalAgentTask]);
 
-        // Orchestrator Consolidation Strategy
         const finalCompiledReport = `==================================================
 🛡️ AUTOMATED AUDIT DISPATCH REPORT
 ==================================================
 
-[AGENT 1: UI/UX USER INTERFACE EXPERT DISPATCHED]
+[AGENT 1: UI/UX USER INTERFACE EXPERT]
 ${uiUxResult.text}
 
 --------------------------------------------------
 
-[AGENT 2: FULL-STACK TECHNICAL ARCHITECT DISPATCHED]
+[AGENT 2: FULL-STACK TECHNICAL ARCHITECT]
 ${technicalResult.text}
 
 ==================================================
