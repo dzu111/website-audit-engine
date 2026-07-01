@@ -12,7 +12,7 @@ const headers = {
 };
 
 exports.handler = async function(event, context) {
-    // Enable CORS handling for incoming requests
+    // 1. Handle CORS Preflight
     if (event.httpMethod === 'OPTIONS') {
         return { statusCode: 200, headers, body: JSON.stringify({ message: "Ready" }) };
     }
@@ -35,33 +35,46 @@ exports.handler = async function(event, context) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'Target URL is required' }) };
     }
 
+    try {
         // Agent 1: The UI/UX Expert
         const uiUxAgentTask = ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: `System Role: You are an elite UI/UX Design Auditor. Analyze the provided URL. Call out interface friction, mobile responsiveness issues, layout inconsistencies, and accessibility barriers. Keep the analysis direct, actionable, and formatted with clear bullet points.\n\nPerform a design friction audit on this corporate web application property: ${url}`
+            contents: `System: You are a UI/UX expert. Analyze the URL: ${url}. 
+            CRITICAL INSTRUCTION: Output EXACTLY 3 short, actionable bullet points about potential UI friction. 
+            DO NOT output any introductory text, greetings, or conclusions. Start immediately with the first bullet point.`,
+            config: {
+                maxOutputTokens: 400, 
+                temperature: 0.3
+            }
         });
 
-        // Agent 2: The Technical Expert (Constrained for speed)
+        // Agent 2: The Technical Expert
         const technicalAgentTask = ai.models.generateContent({
             model: 'gemini-2.5-flash',
-            contents: `System Role: You are a Senior Full-Stack Architect. Analyze the provided URL. Diagnose potential production bottlenecks, database connectivity risks, core web vitals, security gaps, and foundational SEO structure errors. Keep your advice technically accurate and developer-focused.\n\nPerform a technical structural audit on this corporate web application property: ${url}`
+            contents: `System: You are a Technical Architect. Analyze the URL: ${url}. 
+            CRITICAL INSTRUCTION: Output EXACTLY 3 short, actionable bullet points about potential SEO or performance bottlenecks. 
+            DO NOT output any introductory text, greetings, or conclusions. Start immediately with the first bullet point.`,
+            config: {
+                maxOutputTokens: 400,
+                temperature: 0.3
+            }
         });
 
-        // Orchestrator Synchronization Layer (Awaiting both tasks to resolve concurrently)
+        // Run concurrently
         const [uiUxResult, technicalResult] = await Promise.all([uiUxAgentTask, technicalAgentTask]);
 
-        // Orchestrator Consolidation Strategy
+        // Construct the final report securely
         const finalCompiledReport = `==================================================
 🛡️ AUTOMATED AUDIT DISPATCH REPORT
 ==================================================
 
-[AGENT 1: UI/UX USER INTERFACE EXPERT DISPATCHED]
-${uiUxResult.text}
+[AGENT 1: UI/UX USER INTERFACE EXPERT]
+${uiUxResult.text.trim()}
 
 --------------------------------------------------
 
-[AGENT 2: FULL-STACK TECHNICAL ARCHITECT DISPATCHED]
-${technicalResult.text}
+[AGENT 2: FULL-STACK TECHNICAL ARCHITECT]
+${technicalResult.text.trim()}
 
 ==================================================
 End of Orchestrated Execution Pipeline.`;
