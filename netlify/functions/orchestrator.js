@@ -1,7 +1,8 @@
-const { OpenAI } = require('openai');
+const { GoogleGenAI } = require('@google/genai');
 
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY 
+// Initialize the Gemini client using the environment variable
+const ai = new GoogleGenAI({
+    apiKey: process.env.GEMINI_API_KEY
 });
 
 exports.handler = async function(event, context) {
@@ -28,34 +29,20 @@ exports.handler = async function(event, context) {
             return { statusCode: 400, body: JSON.stringify({ error: 'Target URL is required' }) };
         }
 
-        // Initialize parallel execution channels across specialized agents
-        const uiUxAgentTask = openai.chat.completions.create({
-            model: "gpt-4o-mini",
-            messages: [
-                { 
-                    role: "system", 
-                    content: "You are an elite UI/UX Design Auditor. Analyze the provided URL. Call out interface friction, mobile responsiveness issues, layout inconsistencies, and accessibility barriers. Keep the analysis direct, actionable, and formatted with clear bullet points." 
-                },
-                { role: "user", content: `Perform a design friction audit on this corporate web application property: ${url}` }
-            ]
+        // Agent 1: The UI/UX Expert
+        const uiUxAgentTask = ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `System Role: You are an elite UI/UX Design Auditor. Analyze the provided URL. Call out interface friction, mobile responsiveness issues, layout inconsistencies, and accessibility barriers. Keep the analysis direct, actionable, and formatted with clear bullet points.\n\nPerform a design friction audit on this corporate web application property: ${url}`
         });
 
-        const technicalAgentTask = openai.chat.completions.create({
-            model: "gpt-4o-mini",
-            messages: [
-                { 
-                    role: "system", 
-                    content: "You are a Senior Full-Stack Architect. Analyze the provided URL. Diagnose potential production bottlenecks, database connectivity risks, core web vitals, security gaps, and foundational SEO structure errors. Keep your advice technically accurate and developer-focused." 
-                },
-                { role: "user", content: `Perform a technical structural audit on this corporate web application property: ${url}` }
-            ]
+        // Agent 2: The Technical Expert
+        const technicalAgentTask = ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `System Role: You are a Senior Full-Stack Architect. Analyze the provided URL. Diagnose potential production bottlenecks, database connectivity risks, core web vitals, security gaps, and foundational SEO structure errors. Keep your advice technically accurate and developer-focused.\n\nPerform a technical structural audit on this corporate web application property: ${url}`
         });
 
-        // Orchestrator Synchronization Layer (Awaiting both tasks to resolve)
+        // Orchestrator Synchronization Layer (Awaiting both tasks to resolve concurrently)
         const [uiUxResult, technicalResult] = await Promise.all([uiUxAgentTask, technicalAgentTask]);
-
-        const uiUxReport = uiUxResult.choices[0].message.content;
-        const technicalReport = technicalResult.choices[0].message.content;
 
         // Orchestrator Consolidation Strategy
         const finalCompiledReport = `==================================================
@@ -63,12 +50,12 @@ exports.handler = async function(event, context) {
 ==================================================
 
 [AGENT 1: UI/UX USER INTERFACE EXPERT DISPATCHED]
-${uiUxReport}
+${uiUxResult.text}
 
 --------------------------------------------------
 
 [AGENT 2: FULL-STACK TECHNICAL ARCHITECT DISPATCHED]
-${technicalReport}
+${technicalResult.text}
 
 ==================================================
 End of Orchestrated Execution Pipeline.`;
